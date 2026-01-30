@@ -1,0 +1,2099 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Eliminator</title>
+  <style>
+    :root{
+      --bg:#0f1115;
+      --fg:#e9edf5;
+      --muted:#a8b0bd;
+      --soft:rgba(255,255,255,0.08);
+      --line:rgba(255,255,255,0.12);
+      --chip:#0b0d12;
+      --panel:#121624;
+      --panel2:#0c0f18;
+      --accent1:#f2f2f2;
+      --accent2:#aeb7c7;
+
+      --danger:#ffb3b3;
+      --ok:#b7f7d6;
+
+      --r:18px;
+      --shadow:0 18px 48px rgba(0,0,0,.55);
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      overflow-x:hidden;
+    }
+
+    /* ---------- Core layout ---------- */
+    .app{
+      min-height:100%;
+      display:grid;
+      grid-template-columns: 74px 1fr 420px; /* rail | focus | side */
+    }
+    @media (max-width: 980px){
+      .app{
+        grid-template-columns: 1fr; /* focus only on mobile */
+      }
+    }
+
+    /* ---------- Rail (desktop) ---------- */
+    .rail{
+      position:sticky;
+      top:0;
+      height:100vh;
+      padding:10px;
+      border-right:1px solid rgba(255,255,255,0.06);
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      z-index:20;
+    }
+    .rail .logo{
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding:10px 8px;
+      text-align:center;
+      font-weight: 950;
+      letter-spacing:0.10em;
+      text-transform:uppercase;
+      font-size:11px;
+      color: var(--muted);
+      user-select:none;
+    }
+    .rail .btn{
+      border:1px solid rgba(255,255,255,0.08);
+      background:transparent;
+      color:var(--fg);
+      border-radius: 14px;
+      padding:10px 8px;
+      cursor:pointer;
+      font-weight:900;
+      font-size:12px;
+      letter-spacing:0.02em;
+    }
+    .rail .btn:hover{ border-color: rgba(242,242,242,0.18); }
+    .rail .btn:active{ transform: translateY(1px); }
+    .rail .spacer{ flex:1; }
+    .rail .tiny{
+      color:var(--muted);
+      font-size:11px;
+      text-align:center;
+      line-height:1.2;
+      padding:6px 2px;
+      user-select:none;
+    }
+
+    @media (max-width: 980px){
+      .rail{ display:none; }
+    }
+
+    /* ---------- Mobile bottom bar ---------- */
+    .mbar{
+      display:none;
+    }
+    @media (max-width: 980px){
+      .mbar{
+        display:flex;
+        position:fixed;
+        left:10px; right:10px; bottom:10px;
+        gap:10px;
+        z-index:50;
+      }
+      .mbar .mbtn{
+        flex:1;
+        border:1px solid rgba(255,255,255,0.10);
+        background: rgba(0,0,0,0.25);
+        backdrop-filter: blur(10px);
+        color: var(--fg);
+        border-radius: 16px;
+        padding:12px 10px;
+        font-weight: 950;
+        letter-spacing:0.08em;
+        text-transform: uppercase;
+        font-size:12px;
+        cursor:pointer;
+      }
+      .mbar .mbtn:active{ transform: translateY(1px); }
+    }
+
+    /* ---------- Focus column ---------- */
+    .focus{
+      padding: 16px;
+      display:grid;
+      align-content:start;
+      gap: 14px;
+    }
+    @media (max-width: 980px){
+      .focus{
+        padding-bottom: 92px; /* space for bottom bar */
+      }
+    }
+
+    .hero{
+      border:1px solid rgba(242,242,242,0.10);
+      border-radius: 22px;
+      background:
+        radial-gradient(900px 320px at 30% 10%, rgba(242,242,242,0.18), transparent 60%),
+        linear-gradient(180deg, var(--panel), var(--panel2));
+      box-shadow: var(--shadow);
+      padding: 16px;
+      display:grid;
+      gap: 12px;
+    }
+
+    .brand{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .brand h1{
+      margin:0;
+      font-size: 30px;
+      font-weight: 990;
+      letter-spacing:0.02em;
+      line-height:1;
+    }
+    .brand .sub{
+      margin:0;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing:0.05em;
+    }
+
+    .chips{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .chip{
+      display:inline-flex;
+      gap:6px;
+      align-items:center;
+      padding:6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(0,0,0,0.14);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .chip b{ color: var(--fg); font-weight: 950; }
+
+    /* BIG GLOBAL BAR (full -> decreases) */
+    .gbarWrap{
+      border-radius: 999px;
+      height: 26px;
+      background: rgba(255,255,255,0.06);
+      overflow:hidden;
+      position:relative;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .gbarFill{
+      height:100%;
+      width:100%;
+      background: linear-gradient(90deg, var(--accent1), var(--accent2));
+      transition: width 220ms ease;
+    }
+    .gbarLabel{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:12px;
+      font-weight: 980;
+      letter-spacing:0.10em;
+      text-transform: uppercase;
+      color: rgba(10,12,16,0.9);
+      mix-blend-mode: screen;
+      user-select:none;
+    }
+
+    .current{
+      display:grid;
+      gap:10px;
+      padding-top: 6px;
+    }
+    .taskTitle{
+      font-size: 22px;
+      font-weight: 980;
+      line-height: 1.15;
+      word-break: break-word;
+    }
+    .taskMeta{
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing:0.02em;
+      line-height: 1.2;
+    }
+
+    /* Small task bar */
+    .tbarWrap{
+      border-radius: 999px;
+      height: 14px;
+      background: rgba(255,255,255,0.06);
+      overflow:hidden;
+      position:relative;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .tbarFill{
+      height:100%;
+      width:100%;
+      background: linear-gradient(90deg, rgba(242,242,242,0.85), rgba(174,183,199,0.70));
+      transition: width 180ms ease;
+    }
+    .tbarLabel{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:11px;
+      font-weight: 950;
+      color: rgba(10,12,16,0.90);
+      mix-blend-mode: screen;
+      user-select:none;
+    }
+
+    .bigActions{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    @media (max-width: 420px){
+      .bigActions{ grid-template-columns: 1fr; }
+    }
+
+    .bigBtn{
+      border:1px solid rgba(242,242,242,0.14);
+      background:
+        radial-gradient(900px 260px at 30% 20%, rgba(242,242,242,0.16), transparent 60%),
+        linear-gradient(180deg, #0b0d12, #0a0c10);
+      color:var(--fg);
+      border-radius: 18px;
+      padding: 16px 14px;
+      cursor:pointer;
+      font-weight: 980;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      min-height: 60px;
+    }
+    .bigBtn:hover{ border-color: rgba(242,242,242,0.28); }
+    .bigBtn:active{ transform: translateY(1px); }
+    .bigBtn:disabled{ opacity:0.5; cursor:not-allowed; }
+
+    .bigBtn.primary{
+      background:
+        radial-gradient(900px 260px at 30% 20%, rgba(242,242,242,0.22), transparent 60%),
+        linear-gradient(90deg, rgba(242,242,242,0.10), rgba(174,183,199,0.10)),
+        linear-gradient(180deg, #0b0d12, #0a0c10);
+    }
+
+    .miniActions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .sbtn{
+      border:1px solid rgba(255,255,255,0.10);
+      background: transparent;
+      color: var(--fg);
+      border-radius: 14px;
+      padding: 10px 12px;
+      cursor:pointer;
+      font-weight: 900;
+      font-size: 12px;
+      letter-spacing:0.06em;
+      text-transform: uppercase;
+    }
+    .sbtn:hover{ border-color: rgba(242,242,242,0.20); }
+    .sbtn:active{ transform: translateY(1px); }
+    .sbtn.danger{ border-color: rgba(255,179,179,0.22); }
+    .sbtn.ok{ border-color: rgba(183,247,214,0.18); }
+
+    /* ---------- Side column (desktop only) ---------- */
+    .side{
+      padding: 16px 16px 16px 0;
+      border-left:1px solid rgba(255,255,255,0.06);
+      display:grid;
+      gap:12px;
+      align-content:start;
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));
+    }
+    @media (max-width: 980px){
+      .side{ display:none; }
+    }
+
+    .card{
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      background: rgba(0,0,0,0.12);
+      padding: 12px;
+      display:grid;
+      gap:10px;
+    }
+    .cardTitle{
+      color: var(--muted);
+      font-weight: 980;
+      letter-spacing:0.12em;
+      text-transform: uppercase;
+      font-size: 11px;
+      display:flex;
+      justify-content:space-between;
+      align-items:baseline;
+      gap:10px;
+    }
+
+    textarea, select, input[type="text"], input[type="number"]{
+      font:inherit;
+      border:1px solid rgba(255,255,255,0.10);
+      background: var(--chip);
+      color: var(--fg);
+      border-radius: 14px;
+      padding: 10px 12px;
+      outline:none;
+      font-size:13px;
+    }
+    textarea{ width:100%; min-height: 86px; resize: vertical; line-height:1.35; }
+    textarea:focus, select:focus, input:focus{ border-color: rgba(242,242,242,0.22); }
+
+    /* Task list rows */
+    .list{
+      display:grid;
+      gap:8px;
+    }
+    .rowTask{
+      border:1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      background: rgba(0,0,0,0.12);
+      padding: 10px;
+      display:grid;
+      gap:8px;
+    }
+    .lineTop{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:flex-start;
+    }
+    .ttext{
+      font-weight: 930;
+      font-size: 14px;
+      line-height:1.2;
+      word-break: break-word;
+    }
+    .tmini{
+      color: var(--muted);
+      font-size: 12px;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      line-height:1.15;
+    }
+    .actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      align-items:center;
+    }
+    .ibtn{
+      border:1px solid rgba(255,255,255,0.10);
+      background: transparent;
+      color: var(--fg);
+      border-radius: 12px;
+      padding: 8px 10px;
+      cursor:pointer;
+      font-weight: 900;
+      font-size: 12px;
+      letter-spacing:0.02em;
+      white-space:nowrap;
+    }
+    .ibtn:hover{ border-color: rgba(242,242,242,0.18); }
+    .ibtn:active{ transform: translateY(1px); }
+
+    details{ border:1px solid rgba(255,255,255,0.08); border-radius: 16px; overflow:hidden; background: rgba(0,0,0,0.10); }
+    summary{
+      cursor:pointer;
+      padding: 10px 12px;
+      color: var(--muted);
+      font-weight: 950;
+      letter-spacing:0.08em;
+      text-transform: uppercase;
+      font-size: 11px;
+      user-select:none;
+    }
+    details > .inside{ padding: 10px 12px 12px; display:grid; gap:8px; }
+
+    .done{ text-decoration: line-through; opacity:0.55; }
+
+    /* ---------- Drawer / Overlay (mobile + also used on desktop) ---------- */
+    .overlay{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,0.52);
+      opacity:0;
+      pointer-events:none;
+      transition: opacity 160ms ease;
+      z-index:60;
+    }
+    .overlay.show{
+      opacity:1;
+      pointer-events:auto;
+    }
+    .drawer{
+      position:fixed;
+      right:0;
+      top:0;
+      height:100vh;
+      width: min(520px, 94vw);
+      background:
+        radial-gradient(900px 320px at 30% 10%, rgba(242,242,242,0.12), transparent 60%),
+        linear-gradient(180deg, var(--panel), var(--panel2));
+      border-left:1px solid rgba(255,255,255,0.10);
+      transform: translateX(110%);
+      transition: transform 180ms ease;
+      z-index:70;
+      padding: 14px;
+      display:grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 12px;
+      box-shadow: var(--shadow);
+    }
+    .drawer.show{ transform: translateX(0); }
+    .drawerHeader{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+    }
+    .drawerHeader .h{
+      font-weight: 990;
+      letter-spacing:0.08em;
+      text-transform: uppercase;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .drawerBody{
+      overflow:auto;
+      padding-right: 4px;
+      display:grid;
+      gap: 12px;
+      align-content:start;
+    }
+    .drawerFooter{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      align-items:center;
+    }
+
+    /* Toast + FX */
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom: 88px;
+      transform: translateX(-50%);
+      background: rgba(11,13,18,0.92);
+      border:1px solid rgba(255,255,255,0.10);
+      border-radius: 14px;
+      padding: 12px 14px;
+      color: var(--fg);
+      font-size: 13px;
+      opacity:0;
+      pointer-events:none;
+      transition: opacity 160ms ease, transform 160ms ease;
+      max-width: min(900px, calc(100vw - 24px));
+      box-shadow: var(--shadow);
+      white-space:pre-wrap;
+      z-index:80;
+      backdrop-filter: blur(10px);
+    }
+    .toast.show{
+      opacity:1;
+      transform: translateX(-50%) translateY(-6px);
+    }
+
+    canvas#fx{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      z-index:75;
+    }
+
+    /* Small helper text */
+    .hint{
+      color: var(--muted);
+      font-size: 12px;
+      line-height:1.25;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="fx"></canvas>
+
+  <!-- Desktop rail -->
+  <aside class="rail" aria-label="Navigation">
+    <div class="logo">Eliminator</div>
+    <button class="btn" id="navInbox">Inbox</button>
+    <button class="btn" id="navList">Liste</button>
+    <button class="btn" id="navSets">Sets</button>
+    <button class="btn" id="navStats">Stats</button>
+    <button class="btn" id="navSettings">Réglages</button>
+    <div class="spacer"></div>
+    <button class="btn" id="navUndo">Undo</button>
+    <button class="btn" id="navRedo">Redo</button>
+    <div class="tiny" id="presetLabel">Base</div>
+  </aside>
+
+  <div class="app">
+    <!-- Focus -->
+    <main class="focus" aria-label="Focus">
+      <section class="hero" aria-label="Eliminator">
+        <div class="brand">
+          <h1>Eliminator</h1>
+          <p class="sub">des gommes d'ethorion</p>
+        </div>
+
+        <!-- Minimal stats -->
+        <div class="chips" aria-label="Résumé">
+          <span class="chip">Tâches <b id="statTasks">0</b></span>
+          <span class="chip">Torions <b id="statTotal">0</b></span>
+          <span class="chip">Reste <b id="statLeft">0</b></span>
+        </div>
+
+        <!-- BIG GLOBAL BAR -->
+        <div class="gbarWrap" aria-label="Progression globale">
+          <div class="gbarFill" id="gbarFill"></div>
+          <div class="gbarLabel" id="gbarLabel">100%</div>
+        </div>
+
+        <!-- Current task -->
+        <div class="current" aria-label="Tâche en cours">
+          <div class="taskTitle" id="focusText">Aucune</div>
+          <div class="taskMeta" id="focusMeta">Roulette → choisir. Dégommer → réduire.</div>
+
+          <div class="chips" style="justify-content:space-between;">
+            <span class="chip">Restant <b id="focusTorions">0</b></span>
+            <span class="chip">Chrono <b id="focusTimer">—</b></span>
+          </div>
+
+          <!-- small task bar -->
+          <div class="tbarWrap" aria-label="Progression tâche">
+            <div class="tbarFill" id="tbarFill"></div>
+            <div class="tbarLabel" id="tbarLabel">100%</div>
+          </div>
+
+          <div class="miniActions" aria-label="Actions rapides">
+            <button class="sbtn" id="btnTimer">Démarrer</button>
+            <button class="sbtn ok" id="btnDone">Terminer</button>
+            <button class="sbtn danger" id="btnSkip">Passer</button>
+            <button class="sbtn" id="btnNotes">Notes</button>
+          </div>
+
+          <div class="bigActions" aria-label="Actions principales">
+            <button class="bigBtn primary" id="btnRoulette">Roulette</button>
+            <button class="bigBtn" id="btnDego">Dégommer 1 torion</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="hint" id="hintLine">Ctrl/⌘+Enter ajoute des tâches. R = Roulette. D = Dégommer. Esc = fermer un tiroir.</div>
+    </main>
+
+    <!-- Desktop side (quick access, but not required) -->
+    <aside class="side" aria-label="Panneau latéral">
+      <div class="card">
+        <div class="cardTitle"><span>Inbox</span><span class="hint">Ctrl/⌘+Enter</span></div>
+        <textarea id="taInbox" placeholder="Une ligne = une tâche"></textarea>
+        <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
+          <button class="ibtn" id="btnDictate">Dicter</button>
+          <button class="ibtn" id="btnAdd">Ajouter</button>
+        </div>
+      </div>
+
+      <details>
+        <summary>Liste</summary>
+        <div class="inside">
+          <div id="listMain" class="list"></div>
+        </div>
+      </details>
+
+      <details>
+        <summary>Terminé</summary>
+        <div class="inside">
+          <div id="listDone" class="list"></div>
+        </div>
+      </details>
+    </aside>
+  </div>
+
+  <!-- Mobile bottom bar -->
+  <div class="mbar" aria-label="Menu mobile">
+    <button class="mbtn" id="mInbox">Inbox</button>
+    <button class="mbtn" id="mList">Liste</button>
+    <button class="mbtn" id="mRoulette">Roulette</button>
+    <button class="mbtn" id="mDego">Dégommer</button>
+  </div>
+
+  <!-- Drawer system -->
+  <div class="overlay" id="overlay"></div>
+  <aside class="drawer" id="drawer" aria-label="Tiroir">
+    <div class="drawerHeader">
+      <div class="h" id="drawerTitle">—</div>
+      <button class="ibtn" id="drawerClose">Fermer</button>
+    </div>
+    <div class="drawerBody" id="drawerBody"></div>
+    <div class="drawerFooter" id="drawerFooter"></div>
+  </aside>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  const LS_KEY = "eliminator_v3";
+
+  // ---------- DOM ----------
+  const el = (id)=>document.getElementById(id);
+
+  const fxCanvas = el("fx");
+  const fx = fxCanvas.getContext("2d");
+
+  // Focus UI
+  const statTasks = el("statTasks");
+  const statTotal = el("statTotal");
+  const statLeft  = el("statLeft");
+
+  const gbarFill  = el("gbarFill");
+  const gbarLabel = el("gbarLabel");
+
+  const focusText = el("focusText");
+  const focusMeta = el("focusMeta");
+  const focusTorions = el("focusTorions");
+  const focusTimer = el("focusTimer");
+
+  const tbarFill  = el("tbarFill");
+  const tbarLabel = el("tbarLabel");
+
+  const btnRoulette = el("btnRoulette");
+  const btnDego = el("btnDego");
+  const btnTimer = el("btnTimer");
+  const btnDone  = el("btnDone");
+  const btnSkip  = el("btnSkip");
+  const btnNotes = el("btnNotes");
+
+  // Desktop inbox
+  const taInbox = el("taInbox");
+  const btnAdd  = el("btnAdd");
+  const btnDictate = el("btnDictate");
+
+  // Desktop lists
+  const listMain = el("listMain");
+  const listDone = el("listDone");
+
+  // Drawer
+  const overlay = el("overlay");
+  const drawer = el("drawer");
+  const drawerTitle = el("drawerTitle");
+  const drawerBody  = el("drawerBody");
+  const drawerFooter= el("drawerFooter");
+  const drawerClose = el("drawerClose");
+
+  const toast = el("toast");
+  const presetLabel = el("presetLabel");
+
+  // Rail nav
+  const navInbox = el("navInbox");
+  const navList  = el("navList");
+  const navSets  = el("navSets");
+  const navStats = el("navStats");
+  const navSettings = el("navSettings");
+  const navUndo = el("navUndo");
+  const navRedo = el("navRedo");
+
+  // Mobile nav
+  const mInbox = el("mInbox");
+  const mList  = el("mList");
+  const mRoulette = el("mRoulette");
+  const mDego = el("mDego");
+
+  // ---------- State ----------
+  const MAX_HISTORY = 40;
+
+  function initial(){
+    return {
+      version: 3,
+      torionMinutes: 5,
+      activePresetId: "p_default",
+      presets: [{
+        id:"p_default",
+        name:"Base",
+        defaults:{ context:"Travail", category:"Sans catégorie", priority:2, torions:3, energy:"moyen" }
+      }],
+      tasks: [],
+      sets: [
+        // sample (user can edit)
+        { id:"s_consult", name:"Consult", lines:["Patient 1","Patient 2","Patient 3","Patient 4","Encoder note Patient 1","Encoder note Patient 2","Encoder note Patient 3","Encoder note Patient 4"] }
+      ],
+      focus: { taskId:null, running:false, endsAt:null, secondsLeft:0, startedAt:null },
+      history: { undo:[], redo:[] },
+      ui: { energyFilter:"tous", sort:"order" }
+    };
+  }
+
+  let state = load() || initial();
+
+  function save(){
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+  }
+
+  function load(){
+    try{
+      const raw = localStorage.getItem(LS_KEY);
+      if(!raw) return null;
+      const obj = JSON.parse(raw);
+      if(!obj || !Array.isArray(obj.tasks)) return null;
+      if(!Array.isArray(obj.presets)) obj.presets = initial().presets;
+      if(!Array.isArray(obj.sets)) obj.sets = initial().sets;
+      if(!obj.focus) obj.focus = initial().focus;
+      if(!obj.history) obj.history = {undo:[], redo:[]};
+      return obj;
+    }catch{
+      return null;
+    }
+  }
+
+  // ---------- History ----------
+  function snapshotState(){
+    const snap = structuredClone({ ...state, history:{undo:[], redo:[]} });
+    return snap;
+  }
+  function pushHistory(){
+    state.history.undo.push(snapshotState());
+    if(state.history.undo.length > MAX_HISTORY) state.history.undo.shift();
+    state.history.redo = [];
+    save();
+    updateUndoRedo();
+  }
+  function undo(){
+    if(!state.history.undo.length) return;
+    const prev = state.history.undo.pop();
+    const cur = snapshotState();
+    state.history.redo.push(cur);
+    state = { ...prev, history: state.history };
+    save();
+    renderAll();
+  }
+  function redo(){
+    if(!state.history.redo.length) return;
+    const next = state.history.redo.pop();
+    const cur = snapshotState();
+    state.history.undo.push(cur);
+    state = { ...next, history: state.history };
+    save();
+    renderAll();
+  }
+  function updateUndoRedo(){
+    navUndo.disabled = state.history.undo.length===0;
+    navRedo.disabled = state.history.redo.length===0;
+  }
+
+  // ---------- Helpers ----------
+  const now = ()=>Date.now();
+  const clamp = (n,a,b)=>Math.max(a, Math.min(b,n));
+  const uid = ()=> Math.random().toString(36).slice(2,10)+"-"+Date.now().toString(36);
+
+  function activePreset(){
+    return state.presets.find(p=>p.id===state.activePresetId) || state.presets[0];
+  }
+
+  function showToast(msg, ms=2300){
+    toast.textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=> toast.classList.remove("show"), ms);
+  }
+
+  function cleanLine(s){
+    // "prends le texte, ne prends que le texte"
+    // - strip bullets, leading dashes, weird separators
+    // - collapse spaces
+    // - remove trailing repeated separators
+    let x = String(s||"").trim();
+    x = x.replace(/^[-•*]+/g,"").trim();
+    x = x.replace(/^[—–-]+\s*/g,"").trim();
+    x = x.replace(/\s{2,}/g," ");
+    // remove purely decorative pipes/bars (keep normal text)
+    x = x.replace(/[|¦]+/g," ").replace(/\s{2,}/g," ").trim();
+    return x;
+  }
+
+  function suggestFields(text){
+    const t = (text||"").toLowerCase();
+    const base = activePreset().defaults;
+    let out = { ...base };
+
+    const has = (re)=> re.test(t);
+
+    if(has(/\b(appeler|tel|téléphone|contacter)\b/)){
+      out.category="Appels"; out.torions=1; out.energy="faible";
+    }
+    if(has(/\b(encoder|encodage|note)\b/)){
+      out.category="Encodage"; out.torions=Math.max(out.torions,3); out.energy="faible";
+    }
+    if(has(/\b(mail|email|courriel)\b/)){
+      out.category="Mails"; out.torions=Math.max(out.torions,2); out.energy="faible";
+    }
+    if(has(/\b(rapport|rédaction|lettre|dossier)\b/)){
+      out.category="Rapports"; out.torions=Math.max(out.torions,6); out.energy="moyen";
+    }
+    if(has(/\b(urgent|aujourd)\b/)){
+      out.priority=3;
+    }
+    if(has(/\b(maison|perso)\b/)){
+      out.context="Maison";
+    }
+    if(has(/\b(travail|hopital|hôpital|patient|consult)\b/)){
+      out.context="Travail";
+    }
+    // explicit "(3 torions)" or "3 torions"
+    const m = t.match(/(\d{1,2})\s*(?:t|torion|torions)\b/);
+    if(m) out.torions = clamp(parseInt(m[1],10)||out.torions,1,50);
+
+    return out;
+  }
+
+  function sumTotalTorionsActive(){
+    return state.tasks.reduce((acc,t)=> acc + (t.list==="done"?0:(t.torionsTotal||0)), 0);
+  }
+  function sumRemainingTorions(){
+    return state.tasks.reduce((acc,t)=> acc + (t.list==="done"?0:(t.torionsRemaining||0)), 0);
+  }
+  function countActiveTasks(){
+    return state.tasks.filter(t=>t.list!=="done").length;
+  }
+
+  function getTask(id){
+    return state.tasks.find(t=>t.id===id) || null;
+  }
+
+  function nextOrder(list){
+    const items = state.tasks.filter(t=>t.list===list);
+    if(!items.length) return 1;
+    return Math.max(...items.map(t=>t.order||0)) + 1;
+  }
+
+  // ---------- FX / Celebration ----------
+  function resizeFx(){
+    fxCanvas.width = window.innerWidth * devicePixelRatio;
+    fxCanvas.height = window.innerHeight * devicePixelRatio;
+    fx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  }
+  window.addEventListener("resize", resizeFx);
+  resizeFx();
+
+  function confetti(strength=1){
+    const W = window.innerWidth, H = window.innerHeight;
+    const cx = W/2, cy = H*0.65;
+    const n = Math.floor(80 * strength);
+    const parts = [];
+    for(let i=0;i<n;i++){
+      const a = -Math.PI/2 + (Math.random()-0.5)*1.6;
+      const sp = (3 + Math.random()*8)*strength;
+      parts.push({
+        x:cx, y:cy,
+        vx:Math.cos(a)*sp,
+        vy:Math.sin(a)*sp,
+        life: 55 + Math.random()*35,
+        r: 1 + Math.random()*3
+      });
+    }
+    let f=0;
+    const tick=()=>{
+      f++;
+      fx.clearRect(0,0,W,H);
+      fx.fillStyle="rgba(230,230,230,0.88)";
+      for(const p of parts){
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.14;
+        p.life -= 1;
+        fx.globalAlpha = Math.max(0, p.life/90);
+        fx.beginPath();
+        fx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        fx.fill();
+      }
+      if(f<85) requestAnimationFrame(tick);
+      else fx.clearRect(0,0,W,H);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  function flash(){
+    const div = document.createElement("div");
+    div.style.position="fixed";
+    div.style.inset="0";
+    div.style.background="rgba(242,242,242,0.08)";
+    div.style.pointerEvents="none";
+    div.style.zIndex="79";
+    div.style.backdropFilter="blur(1px)";
+    div.style.opacity="0";
+    div.style.transition="opacity 120ms ease";
+    document.body.appendChild(div);
+    requestAnimationFrame(()=> div.style.opacity="1");
+    setTimeout(()=> div.style.opacity="0", 160);
+    setTimeout(()=> div.remove(), 420);
+  }
+
+  const LINES = [
+    "Torion dégommé.",
+    "Charge réduite.",
+    "Propre.",
+    "On avance.",
+    "Un cran de moins."
+  ];
+  const DONE_LINES = [
+    "Tâche exterminée.",
+    "Fin de mission.",
+    "Élimination confirmée.",
+    "Terminé. Suivant."
+  ];
+
+  // ---------- Drawer ----------
+  function openDrawer(title, bodyNode, footerNode){
+    drawerTitle.textContent = title;
+    drawerBody.innerHTML = "";
+    drawerFooter.innerHTML = "";
+    drawerBody.appendChild(bodyNode);
+    if(footerNode) drawerFooter.appendChild(footerNode);
+
+    overlay.classList.add("show");
+    drawer.classList.add("show");
+  }
+  function closeDrawer(){
+    overlay.classList.remove("show");
+    drawer.classList.remove("show");
+  }
+  overlay.addEventListener("click", closeDrawer);
+  drawerClose.addEventListener("click", closeDrawer);
+
+  // ---------- Add tasks ----------
+  function addTasksFromText(raw, targetList="main"){
+    const lines = String(raw||"")
+      .split(/\r?\n/)
+      .map(cleanLine)
+      .filter(Boolean);
+
+    if(!lines.length){
+      showToast("Vide.");
+      return;
+    }
+
+    pushHistory();
+
+    const startOrder = nextOrder(targetList);
+    lines.forEach((line, idx)=>{
+      const fields = suggestFields(line);
+      const tor = clamp(parseInt(fields.torions,10)||3, 1, 50);
+
+      state.tasks.push({
+        id: uid(),
+        text: line,
+        list: targetList,
+        order: startOrder + idx,
+        context: fields.context,
+        category: fields.category,
+        priority: clamp(parseInt(fields.priority,10)||2, 1, 3),
+        energy: fields.energy,
+        torionsTotal: tor,
+        torionsRemaining: tor,
+        createdAt: now(),
+        updatedAt: now(),
+        doneAt: null,
+
+        notesText: "",
+        notesInfo: "",
+        notesImage: "",
+
+        trackedSeconds: 0, // actual time tracked
+        timerRunning: false,
+        timerStart: null
+      });
+    });
+
+    save();
+    renderAll();
+    showToast("Ajouté.", 2000);
+
+    // If no focus, set one
+    if(!state.focus.taskId){
+      const t = chooseWeightedTask();
+      if(t) setFocus(t.id);
+    }
+  }
+
+  function addInbox(){
+    addTasksFromText(taInbox.value, "main");
+    taInbox.value = "";
+  }
+
+  // ---------- Picking ----------
+  function chooseWeightedTask(){
+    const pool = state.tasks.filter(t=> t.list!=="done" && (t.torionsRemaining||0) > 0);
+    if(!pool.length) return null;
+
+    // mild weighting: remaining + priority
+    const weights = pool.map(t => Math.max(1, Math.ceil(t.torionsRemaining||1)) + (t.priority===3?2:(t.priority===1?0:1)));
+    const total = weights.reduce((a,b)=>a+b,0);
+    let r = Math.random()*total;
+    for(let i=0;i<pool.length;i++){
+      r -= weights[i];
+      if(r<=0) return pool[i];
+    }
+    return pool[pool.length-1];
+  }
+
+  function setFocus(taskId){
+    // stop global focus timer if running
+    stopFocusTimer();
+
+    state.focus.taskId = taskId;
+    state.focus.running = false;
+    state.focus.endsAt = null;
+    state.focus.secondsLeft = 0;
+    state.focus.startedAt = null;
+
+    save();
+    renderFocus();
+    renderGlobal();
+  }
+
+  // ---------- Timer (focus: one torion block) ----------
+  let focusTick = null;
+
+  function startFocusTimer(){
+    const t = getTask(state.focus.taskId);
+    if(!t) return;
+
+    const seconds = (state.torionMinutes||5) * 60;
+    state.focus.running = true;
+    state.focus.secondsLeft = seconds;
+    state.focus.endsAt = now() + seconds*1000;
+    state.focus.startedAt = now();
+    save();
+    renderFocus();
+
+    if(focusTick) clearInterval(focusTick);
+    focusTick = setInterval(()=>{
+      if(!state.focus.running || !state.focus.endsAt) return;
+      const left = Math.max(0, Math.ceil((state.focus.endsAt - now())/1000));
+      state.focus.secondsLeft = left;
+
+      if(left<=0){
+        // auto consume 1 torion
+        pauseFocusTimer();
+        degoOneTorion();
+        return;
+      }
+      save();
+      renderFocus();
+    }, 250);
+  }
+
+  function pauseFocusTimer(){
+    state.focus.running = false;
+    state.focus.endsAt = null;
+    save();
+    renderFocus();
+    if(focusTick){ clearInterval(focusTick); focusTick=null; }
+  }
+
+  function stopFocusTimer(){
+    state.focus.running = false;
+    state.focus.endsAt = null;
+    state.focus.secondsLeft = 0;
+    state.focus.startedAt = null;
+    if(focusTick){ clearInterval(focusTick); focusTick=null; }
+    save();
+  }
+
+  function fmtTimer(s){
+    if(!Number.isFinite(s) || s<=0) return "—";
+    const m = Math.floor(s/60);
+    const r = s%60;
+    return `${String(m).padStart(2,"0")}:${String(r).padStart(2,"0")}`;
+  }
+
+  // ---------- Time tracking per task (actual) ----------
+  function startTaskTracking(task){
+    if(task.timerRunning) return;
+    task.timerRunning = true;
+    task.timerStart = now();
+  }
+  function stopTaskTracking(task){
+    if(!task.timerRunning) return;
+    const dt = Math.max(0, Math.floor((now()-task.timerStart)/1000));
+    task.trackedSeconds = (task.trackedSeconds||0) + dt;
+    task.timerRunning = false;
+    task.timerStart = null;
+  }
+
+  // ---------- Actions ----------
+  function degoOneTorion(){
+    const t = getTask(state.focus.taskId);
+    if(!t){ showToast("Aucune."); return; }
+    if(t.torionsRemaining<=0){ return; }
+
+    pushHistory();
+
+    // track actual time if focus block was used
+    if(state.focus.startedAt){
+      // add the actually elapsed seconds of this focus timer segment (if any)
+      const elapsed = Math.max(0, Math.floor((now() - state.focus.startedAt)/1000));
+      t.trackedSeconds = (t.trackedSeconds||0) + elapsed;
+    }
+
+    t.torionsRemaining = Math.max(0, t.torionsRemaining - 1);
+    t.updatedAt = now();
+
+    stopFocusTimer();
+
+    save();
+    renderAll();
+
+    confetti(0.8);
+    flash();
+    showToast(LINES[Math.floor(Math.random()*LINES.length)], 2200);
+
+    if(t.torionsRemaining === 0){
+      finishTask(t.id);
+    }
+  }
+
+  function finishTask(taskId){
+    const t = getTask(taskId);
+    if(!t) return;
+
+    pushHistory();
+    stopTaskTracking(t); // ensure final tally
+
+    t.list = "done";
+    t.doneAt = now();
+    t.torionsRemaining = 0;
+    t.updatedAt = now();
+
+    // clear focus if it was this task
+    if(state.focus.taskId === t.id){
+      stopFocusTimer();
+      state.focus.taskId = null;
+    }
+
+    save();
+    renderAll();
+
+    // bigger celebration
+    confetti(2.2);
+    flash();
+    showToast(DONE_LINES[Math.floor(Math.random()*DONE_LINES.length)], 3200);
+
+    // auto pick next
+    const next = chooseWeightedTask();
+    if(next) setFocus(next.id);
+  }
+
+  function skipTask(){
+    const t = chooseWeightedTask();
+    if(!t){ showToast("Vide."); return; }
+    setFocus(t.id);
+    confetti(0.9);
+    showToast("Choisi.", 1800);
+  }
+
+  function duplicateTask(taskId){
+    const t = getTask(taskId);
+    if(!t) return;
+
+    pushHistory();
+    const copy = structuredClone(t);
+    copy.id = uid();
+    copy.list = "main";
+    copy.order = nextOrder("main");
+    copy.createdAt = now();
+    copy.updatedAt = now();
+    copy.doneAt = null;
+    copy.torionsRemaining = copy.torionsTotal;
+    copy.trackedSeconds = 0;
+    copy.timerRunning = false;
+    copy.timerStart = null;
+
+    state.tasks.push(copy);
+    save();
+    renderAll();
+    showToast("Dupliqué.", 2000);
+  }
+
+  function deleteTask(taskId){
+    if(!confirm("Supprimer ?")) return;
+    pushHistory();
+    if(state.focus.taskId === taskId){
+      stopFocusTimer();
+      state.focus.taskId = null;
+    }
+    state.tasks = state.tasks.filter(x=>x.id!==taskId);
+    save();
+    renderAll();
+    showToast("Supprimé.", 2000);
+  }
+
+  function setFragments(taskId){
+    const t = getTask(taskId);
+    if(!t) return;
+    const val = prompt("Nombre de fragments (torions) ?", String(t.torionsTotal||3));
+    if(val===null) return;
+    const n = clamp(parseInt(val,10)||t.torionsTotal||3, 1, 50);
+
+    pushHistory();
+    const wasTotal = Math.max(1, t.torionsTotal||1);
+    const wasRem  = clamp(t.torionsRemaining||0, 0, wasTotal);
+    const ratio = wasTotal ? (wasRem/wasTotal) : 1;
+
+    t.torionsTotal = n;
+    t.torionsRemaining = clamp(Math.round(n*ratio), 0, n);
+    if(t.torionsRemaining===0 && t.list!=="done") t.torionsRemaining = Math.min(1,n);
+    t.updatedAt = now();
+
+    save();
+    renderAll();
+    showToast("OK", 1600);
+  }
+
+  // ---------- Notes drawer (task) ----------
+  function openNotes(){
+    const t = getTask(state.focus.taskId);
+    if(!t){ showToast("Aucune."); return; }
+
+    const wrap = document.createElement("div");
+    wrap.style.display="grid";
+    wrap.style.gap="10px";
+
+    const p = document.createElement("div");
+    p.className="hint";
+    p.textContent="Notes: texte + infos (numéro, ref, etc.) + image optionnelle.";
+
+    const ta = document.createElement("textarea");
+    ta.placeholder="Note";
+    ta.value = t.notesText || "";
+    ta.style.minHeight="110px";
+
+    const info = document.createElement("textarea");
+    info.placeholder="Infos (ex: numéros, adresses, codes…)";
+    info.value = t.notesInfo || "";
+    info.style.minHeight="80px";
+
+    const imgRow = document.createElement("div");
+    imgRow.style.display="flex";
+    imgRow.style.gap="10px";
+    imgRow.style.flexWrap="wrap";
+    imgRow.style.alignItems="center";
+
+    const file = document.createElement("input");
+    file.type="file";
+    file.accept="image/*";
+
+    const preview = document.createElement("div");
+    preview.style.width="72px";
+    preview.style.height="72px";
+    preview.style.border="1px solid rgba(255,255,255,0.10)";
+    preview.style.borderRadius="16px";
+    preview.style.overflow="hidden";
+    preview.style.background="rgba(0,0,0,0.20)";
+    preview.style.display="flex";
+    preview.style.alignItems="center";
+    preview.style.justifyContent="center";
+    preview.style.color="rgba(255,255,255,0.35)";
+    preview.style.fontWeight="900";
+    preview.style.fontSize="11px";
+    preview.textContent = t.notesImage ? "" : "IMAGE";
+
+    if(t.notesImage){
+      const im = new Image();
+      im.src = t.notesImage;
+      im.style.width="100%";
+      im.style.height="100%";
+      im.style.objectFit="cover";
+      preview.innerHTML="";
+      preview.appendChild(im);
+    }
+
+    file.addEventListener("change", async ()=>{
+      if(!file.files || !file.files[0]) return;
+      const data = await fileToDataURL(file.files[0], 900);
+      pushHistory();
+      t.notesImage = data;
+      save();
+      showToast("Image ok", 1800);
+      closeDrawer();
+      openNotes(); // re-open refreshed (simple)
+    });
+
+    const btnClearImg = document.createElement("button");
+    btnClearImg.className="ibtn";
+    btnClearImg.textContent="Suppr image";
+    btnClearImg.addEventListener("click", ()=>{
+      pushHistory();
+      t.notesImage = "";
+      save();
+      showToast("OK", 1500);
+      closeDrawer();
+      openNotes();
+    });
+
+    imgRow.appendChild(file);
+    imgRow.appendChild(preview);
+    imgRow.appendChild(btnClearImg);
+
+    wrap.appendChild(p);
+    wrap.appendChild(ta);
+    wrap.appendChild(info);
+    wrap.appendChild(imgRow);
+
+    const footer = document.createElement("div");
+    footer.style.display="flex";
+    footer.style.gap="10px";
+    footer.style.flexWrap="wrap";
+    footer.style.justifyContent="flex-end";
+
+    const saveBtn = document.createElement("button");
+    saveBtn.className="ibtn";
+    saveBtn.textContent="Enregistrer";
+    saveBtn.addEventListener("click", ()=>{
+      pushHistory();
+      t.notesText = ta.value.slice(0, 12000);
+      t.notesInfo = info.value.slice(0, 12000);
+      t.updatedAt = now();
+      save();
+      renderAll();
+      showToast("Enregistré.", 2000);
+      closeDrawer();
+    });
+
+    footer.appendChild(saveBtn);
+
+    openDrawer("Notes", wrap, footer);
+  }
+
+  async function fileToDataURL(file, maxW=900){
+    const dataUrl = await new Promise((res, rej)=>{
+      const r = new FileReader();
+      r.onload = ()=>res(r.result);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+
+    const img = await new Promise((res, rej)=>{
+      const im = new Image();
+      im.onload = ()=>res(im);
+      im.onerror = rej;
+      im.src = dataUrl;
+    });
+
+    const scale = Math.min(1, maxW / img.width);
+    const w = Math.round(img.width*scale);
+    const h = Math.round(img.height*scale);
+
+    const c = document.createElement("canvas");
+    c.width=w; c.height=h;
+    const ctx = c.getContext("2d");
+    ctx.drawImage(img,0,0,w,h);
+    return c.toDataURL("image/jpeg", 0.82);
+  }
+
+  // ---------- Rendering ----------
+  function renderGlobal(){
+    const tasks = countActiveTasks();
+    const total = Math.max(1, sumTotalTorionsActive() || 1);
+    const left  = clamp(sumRemainingTorions(), 0, total);
+
+    statTasks.textContent = String(tasks);
+    statTotal.textContent = String(total);
+    statLeft.textContent  = String(left);
+
+    // Global percent left
+    const pctLeft = Math.round((left/total)*100);
+    gbarFill.style.width = `${pctLeft}%`;
+    gbarLabel.textContent = `${pctLeft}%`;
+
+    presetLabel.textContent = activePreset().name;
+
+    updateUndoRedo();
+  }
+
+  function renderFocus(){
+    const t = getTask(state.focus.taskId);
+    if(!t){
+      focusText.textContent = "Aucune";
+      focusMeta.textContent = "Roulette → choisir. Dégommer → réduire.";
+      focusTorions.textContent = "0";
+      focusTimer.textContent = "—";
+      btnDego.disabled = true;
+      btnTimer.disabled = true;
+      btnDone.disabled = true;
+      btnSkip.disabled = false;
+      btnNotes.disabled = true;
+
+      tbarFill.style.width="100%";
+      tbarLabel.textContent="100%";
+      return;
+    }
+
+    focusText.textContent = t.text;
+    focusMeta.textContent = `${t.context} · ${t.category} · P${t.priority} · ${t.energy}`;
+    focusTorions.textContent = String(t.torionsRemaining||0);
+    focusTimer.textContent = fmtTimer(state.focus.secondsLeft);
+
+    btnDego.disabled = false;
+    btnTimer.disabled = false;
+    btnDone.disabled = false;
+    btnSkip.disabled = false;
+    btnNotes.disabled = false;
+
+    btnTimer.textContent = state.focus.running ? "Pause" : "Démarrer";
+
+    const total = Math.max(1, t.torionsTotal||1);
+    const rem = clamp(t.torionsRemaining||0, 0, total);
+    const pctLeft = Math.round((rem/total)*100);
+
+    tbarFill.style.width = `${pctLeft}%`;
+    tbarLabel.textContent = `${pctLeft}%`;
+  }
+
+  function escapeHtml(s){
+    return String(s ?? "").replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[c]));
+  }
+
+  function renderList(container, items){
+    container.innerHTML = "";
+    items.forEach(t=>{
+      const row = document.createElement("div");
+      row.className = "rowTask";
+
+      const total = Math.max(1, t.torionsTotal||1);
+      const rem = clamp(t.torionsRemaining||0, 0, total);
+
+      row.innerHTML = `
+        <div class="lineTop">
+          <div>
+            <div class="ttext ${t.list==="done" ? "done":""}">${escapeHtml(t.text)}</div>
+            <div class="tmini">
+              <span>${escapeHtml(t.context||"—")}</span>
+              <span>·</span>
+              <span>${escapeHtml(t.category||"—")}</span>
+              <span>·</span>
+              <span>P${escapeHtml(String(t.priority||2))}</span>
+              <span>·</span>
+              <span>${escapeHtml(String(rem))}/${escapeHtml(String(total))}</span>
+            </div>
+          </div>
+          <div class="actions">
+            ${t.list!=="done" ? `<button class="ibtn" data-act="focus">Focus</button>` : ``}
+            ${t.list!=="done" ? `<button class="ibtn" data-act="frag">Fragments</button>` : ``}
+            ${t.list!=="done" ? `<button class="ibtn" data-act="dup">Dupliquer</button>` : ``}
+            ${t.list!=="done" ? `<button class="ibtn" data-act="done">OK</button>` : `<button class="ibtn" data-act="restore">Restaurer</button>`}
+            <button class="ibtn" data-act="del">X</button>
+          </div>
+        </div>
+      `;
+
+      row.querySelectorAll("[data-act]").forEach(btn=>{
+        const act = btn.dataset.act;
+        btn.addEventListener("click", ()=>{
+          if(act==="focus") setFocus(t.id);
+          if(act==="frag") setFragments(t.id);
+          if(act==="dup") duplicateTask(t.id);
+          if(act==="done") finishTask(t.id);
+          if(act==="restore"){
+            pushHistory();
+            t.list="main";
+            t.doneAt=null;
+            t.torionsRemaining = Math.max(1, t.torionsTotal||1);
+            t.order = nextOrder("main");
+            t.updatedAt = now();
+            save();
+            renderAll();
+          }
+          if(act==="del") deleteTask(t.id);
+        });
+      });
+
+      container.appendChild(row);
+    });
+  }
+
+  function getMainTasks(){
+    return state.tasks
+      .filter(t=>t.list==="main")
+      .sort((a,b)=>(a.order||0)-(b.order||0));
+  }
+  function getDoneTasks(){
+    return state.tasks
+      .filter(t=>t.list==="done")
+      .sort((a,b)=>(b.doneAt||0)-(a.doneAt||0))
+      .slice(0, 40);
+  }
+
+  function renderAll(){
+    renderGlobal();
+    renderFocus();
+    renderList(listMain, getMainTasks());
+    renderList(listDone, getDoneTasks());
+    updateUndoRedo();
+  }
+
+  // ---------- Drawers content ----------
+  function openInboxDrawer(){
+    const wrap = document.createElement("div");
+    wrap.style.display="grid";
+    wrap.style.gap="10px";
+
+    const ta = document.createElement("textarea");
+    ta.placeholder="Une ligne = une tâche";
+    ta.value = "";
+    ta.style.minHeight="150px";
+
+    const hint = document.createElement("div");
+    hint.className="hint";
+    hint.textContent="Coller texte brut. Le système garde seulement les lignes de texte.";
+
+    wrap.appendChild(hint);
+    wrap.appendChild(ta);
+
+    const footer = document.createElement("div");
+    footer.style.display="flex";
+    footer.style.gap="10px";
+    footer.style.flexWrap="wrap";
+    footer.style.justifyContent="flex-end";
+
+    const dictate = document.createElement("button");
+    dictate.className="ibtn";
+    dictate.textContent="Dicter";
+    dictate.addEventListener("click", ()=> startDictationToTextarea(ta));
+
+    const add = document.createElement("button");
+    add.className="ibtn";
+    add.textContent="Ajouter";
+    add.addEventListener("click", ()=>{
+      addTasksFromText(ta.value, "main");
+      closeDrawer();
+    });
+
+    footer.appendChild(dictate);
+    footer.appendChild(add);
+
+    openDrawer("Inbox", wrap, footer);
+  }
+
+  function openListDrawer(){
+    const wrap = document.createElement("div");
+    wrap.style.display="grid";
+    wrap.style.gap="10px";
+
+    const hint = document.createElement("div");
+    hint.className="hint";
+    hint.textContent="Liste active. Focus = envoyer une tâche en écran principal.";
+
+    wrap.appendChild(hint);
+
+    const list = document.createElement("div");
+    list.className="list";
+    wrap.appendChild(list);
+
+    // render main tasks inside drawer
+    const items = getMainTasks();
+    items.forEach(t=>{
+      const row = document.createElement("div");
+      row.className="rowTask";
+      const total = Math.max(1, t.torionsTotal||1);
+      const rem = clamp(t.torionsRemaining||0, 0, total);
+      row.innerHTML = `
+        <div class="lineTop">
+          <div>
+            <div class="ttext">${escapeHtml(t.text)}</div>
+            <div class="tmini">
+              <span>${escapeHtml(t.category||"—")}</span><span>·</span>
+              <span>${escapeHtml(String(rem))}/${escapeHtml(String(total))}</span>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="ibtn" data-act="focus">Focus</button>
+            <button class="ibtn" data-act="frag">Fragments</button>
+            <button class="ibtn" data-act="dup">Dupliquer</button>
+            <button class="ibtn" data-act="done">OK</button>
+            <button class="ibtn" data-act="del">X</button>
+          </div>
+        </div>
+      `;
+      row.querySelector('[data-act="focus"]').addEventListener("click", ()=>{ setFocus(t.id); closeDrawer(); });
+      row.querySelector('[data-act="frag"]').addEventListener("click", ()=> setFragments(t.id));
+      row.querySelector('[data-act="dup"]').addEventListener("click", ()=> duplicateTask(t.id));
+      row.querySelector('[data-act="done"]').addEventListener("click", ()=> finishTask(t.id));
+      row.querySelector('[data-act="del"]').addEventListener("click", ()=> deleteTask(t.id));
+      list.appendChild(row);
+    });
+
+    openDrawer("Liste", wrap, null);
+  }
+
+  function openSetsDrawer(){
+    const wrap = document.createElement("div");
+    wrap.style.display="grid";
+    wrap.style.gap="12px";
+
+    const hint = document.createElement("div");
+    hint.className="hint";
+    hint.textContent="Sets = groupes récurrents. Appliquer = copie les tâches dans la liste.";
+
+    wrap.appendChild(hint);
+
+    const list = document.createElement("div");
+    list.className="list";
+    wrap.appendChild(list);
+
+    state.sets.forEach(s=>{
+      const row = document.createElement("div");
+      row.className="rowTask";
+      row.innerHTML = `
+        <div class="lineTop">
+          <div>
+            <div class="ttext">${escapeHtml(s.name)}</div>
+            <div class="tmini">${escapeHtml(String((s.lines||[]).length))} tâches</div>
+          </div>
+          <div class="actions">
+            <button class="ibtn" data-act="apply">Appliquer</button>
+            <button class="ibtn" data-act="edit">Éditer</button>
+            <button class="ibtn" data-act="del">X</button>
+          </div>
+        </div>
+      `;
+      row.querySelector('[data-act="apply"]').addEventListener("click", ()=>{
+        addTasksFromText((s.lines||[]).join("\n"), "main");
+        showToast("Set appliqué.", 2200);
+      });
+      row.querySelector('[data-act="edit"]').addEventListener("click", ()=> openEditSetDrawer(s.id));
+      row.querySelector('[data-act="del"]').addEventListener("click", ()=>{
+        if(!confirm("Supprimer set ?")) return;
+        pushHistory();
+        state.sets = state.sets.filter(x=>x.id!==s.id);
+        save();
+        closeDrawer();
+        openSetsDrawer();
+      });
+      list.appendChild(row);
+    });
+
+    const footer = document.createElement("div");
+    footer.style.display="flex";
+    footer.style.justifyContent="flex-end";
+
+    const add = document.createElement("button");
+    add.className="ibtn";
+    add.textContent="+ Set";
+    add.addEventListener("click", ()=> openEditSetDrawer(null));
+
+    footer.appendChild(add);
+    openDrawer("Sets", wrap, footer);
+  }
+
+  function openEditSetDrawer(setId){
+    const existing = setId ? state.sets.find(s=>s.id===setId) : null;
+
+    const wrap = document.createElement("div");
+    wrap.style.display="grid";
+    wrap.style.gap="10px";
+
+    const name = document.createElement("input");
+    name.type="text";
+    name.placeholder="Nom du set";
+    name.value = existing ? existing.name : "";
+
+    const ta = document.createElement("textarea");
+    ta.placeholder="Une ligne = une tâche";
+    ta.style.minHeight="180px";
+    ta.value = existing ? (existing.lines||[]).join("\n") : "";
+
+    const hint = document.createElement("div");
+    hint.className="hint";
+    hint.textContent="Tu peux préparer un set 'Consult', 'Maison', 'Service', etc. Ensuite tu appliques en 1 clic.";
+
+    wrap.appendChild(hint);
+    wrap.appendChild(name);
+    wrap.appendChild(ta);
+
+    const footer = document.createElement("div");
+    footer.style.display="flex";
+    footer.style.gap="10px";
+    footer.style.flexWrap="wrap";
+    footer.style.justifyContent="flex-end";
+
+    const saveBtn = document.createElement("button");
+    saveBtn.className="ibtn";
+    saveBtn.textContent="Enregistrer";
+    saveBtn.addEventListener("click", ()=>{
+      const n = cleanLine(name.value).slice(0,40);
+      const lines = String(ta.value||"").split(/\r?\n/).map(cleanLine).filter(Boolean);
+
+      if(!n){ showToast("Nom ?"); return; }
+      if(!lines.length){ showToast("Lignes ?"); return; }
+
+      pushHistory();
+      if(existing){
+        existing.name = n;
+        existing.lines = lines;
+      }else{
+        state.sets.push({ id: "s_"+uid(), name:n, lines });
+      }
+      save();
+      closeDrawer();
+      openSetsDrawer();
+      showToast("OK", 1800);
+    });
+
+    footer.appendChild(saveBtn);
+    openDrawer(existing ? "Éditer set" : "Nouveau set", wrap, footer);
+  }
+
+  function openStatsDrawer(){
+    const wrap = document.createElement("div");
+    wrap.style.display="grid";
+    wrap.style.gap="10px";
+
+    const totalEst = sumTotalTorionsActive() * (state.torionMinutes||5) * 60;
+    const totalActual = state.tasks.reduce((acc,t)=>{
+      let s = (t.trackedSeconds||0);
+      if(t.timerRunning && t.timerStart) s += Math.max(0, Math.floor((now()-t.timerStart)/1000));
+      return acc + s;
+    }, 0);
+
+    const line = document.createElement("div");
+    line.className="hint";
+    line.textContent="Stats: comparaison estimation vs temps réel. (Le réel est ce que tu as chronométré.)";
+
+    const box = document.createElement("div");
+    box.className="rowTask";
+    box.innerHTML = `
+      <div class="tmini">
+        <span>Estimation active</span><span>·</span><b>${fmtHMS(totalEst)}</b>
+      </div>
+      <div class="tmini">
+        <span>Réel (chronométré)</span><span>·</span><b>${fmtHMS(totalActual)}</b>
+      </div>
+    `;
+
+    const byCat = {};
+    state.tasks.forEach(t=>{
+      const cat = t.category || "Sans catégorie";
+      if(!byCat[cat]) byCat[cat] = { est:0, real:0, n:0 };
+      byCat[cat].n++;
+      byCat[cat].est += (t.torionsTotal||0) * (state.torionMinutes||5) * 60;
+      let s = (t.trackedSeconds||0);
+      if(t.timerRunning && t.timerStart) s += Math.max(0, Math.floor((now()-t.timerStart)/1000));
+      byCat[cat].real += s;
+    });
+
+    const list = document.createElement("div");
+    list.className="list";
+    Object.keys(byCat).sort((a,b)=>a.localeCompare(b,"fr")).forEach(cat=>{
+      const r = byCat[cat];
+      const item = document.createElement("div");
+      item.className="rowTask";
+      item.innerHTML = `
+        <div class="ttext">${escapeHtml(cat)}</div>
+        <div class="tmini">
+          <span>${escapeHtml(String(r.n))} tâches</span><span>·</span>
+          <span>est</span><b>${fmtHMS(r.est)}</b><span>·</span>
+          <span>réel</span><b>${fmtHMS(r.real)}</b>
+        </div>
+      `;
+      list.appendChild(item);
+    });
+
+    wrap.appendChild(line);
+    wrap.appendChild(box);
+    wrap.appendChild(list);
+
+    openDrawer("Stats", wrap, null);
+  }
+
+  function openSettingsDrawer(){
+    const wrap = document.createElement("div");
+    wrap.style.display="grid";
+    wrap.style.gap="12px";
+
+    const p = document.createElement("div");
+    p.className="hint";
+    p.textContent="Réglages: torion minutes + export/import + partage.";
+
+    const sel = document.createElement("select");
+    sel.innerHTML = `
+      <option value="5">Torion = 5 min</option>
+      <option value="10">Torion = 10 min</option>
+    `;
+    sel.value = String(state.torionMinutes===10?10:5);
+    sel.addEventListener("change", ()=>{
+      pushHistory();
+      state.torionMinutes = (Number(sel.value)===10)?10:5;
+      save();
+      renderAll();
+      showToast("OK", 1600);
+    });
+
+    const row = document.createElement("div");
+    row.style.display="flex";
+    row.style.gap="10px";
+    row.style.flexWrap="wrap";
+
+    const ex = document.createElement("button");
+    ex.className="ibtn";
+    ex.textContent="Export JSON";
+    ex.addEventListener("click", exportJson);
+
+    const im = document.createElement("button");
+    im.className="ibtn";
+    im.textContent="Import JSON";
+    im.addEventListener("click", importJson);
+
+    const sh = document.createElement("button");
+    sh.className="ibtn";
+    sh.textContent="Partager tâches";
+    sh.addEventListener("click", shareTasks);
+
+    const rs = document.createElement("button");
+    rs.className="ibtn";
+    rs.textContent="Reset";
+    rs.addEventListener("click", resetAll);
+
+    row.appendChild(ex);
+    row.appendChild(im);
+    row.appendChild(sh);
+    row.appendChild(rs);
+
+    wrap.appendChild(p);
+    wrap.appendChild(sel);
+    wrap.appendChild(row);
+
+    openDrawer("Réglages", wrap, null);
+  }
+
+  // ---------- Export / Import / Share ----------
+  function exportJson(){
+    const payload = structuredClone(state);
+    payload.history = {undo:[], redo:[]};
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href=url;
+    a.download="eliminator.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast("Export.", 1800);
+  }
+
+  function importJson(){
+    const input = document.createElement("input");
+    input.type="file";
+    input.accept="application/json";
+    input.onchange = async ()=>{
+      const f = input.files && input.files[0];
+      if(!f) return;
+      try{
+        const txt = await f.text();
+        const obj = JSON.parse(txt);
+        if(!obj || !Array.isArray(obj.tasks)) { showToast("JSON?"); return; }
+        pushHistory();
+        state = { ...obj, history: state.history };
+        if(!Array.isArray(state.presets)) state.presets = initial().presets;
+        if(!Array.isArray(state.sets)) state.sets = initial().sets;
+        save();
+        renderAll();
+        showToast("Import.", 2000);
+      }catch{
+        showToast("JSON?");
+      }
+    };
+    input.click();
+  }
+
+  function shareTasks(){
+    const active = state.tasks.filter(t=>t.list!=="done");
+    const txt = active.map(t=>`- ${t.text}`).join("\n");
+    if(navigator.share){
+      navigator.share({ title:"Eliminator", text: txt }).catch(()=>{});
+      showToast("Share.", 1800);
+    }else{
+      navigator.clipboard?.writeText(txt).then(()=>{
+        showToast("Copié.", 2200);
+      }).catch(()=>{
+        // fallback mailto
+        const a = document.createElement("a");
+        a.href = `mailto:?subject=${encodeURIComponent("Eliminator")}&body=${encodeURIComponent(txt)}`;
+        a.click();
+      });
+    }
+  }
+
+  function resetAll(){
+    if(!confirm("Reset ?")) return;
+    state = initial();
+    save();
+    renderAll();
+    showToast("OK", 1800);
+  }
+
+  // ---------- Dictation (best effort) ----------
+  function startDictationToTextarea(textarea){
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR){
+      showToast("Dictée indisponible.", 2600);
+      return;
+    }
+    const rec = new SR();
+    rec.lang = "fr-FR";
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+
+    let finalText = "";
+    rec.onresult = (e)=>{
+      let interim = "";
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const tr = e.results[i][0].transcript;
+        if(e.results[i].isFinal) finalText += tr + "\n";
+        else interim += tr;
+      }
+      textarea.value = (textarea.value.trim() ? textarea.value.trim()+"\n" : "") + finalText + (interim? interim : "");
+    };
+    rec.onerror = ()=> showToast("Dictée stoppée.", 2200);
+    rec.onend = ()=> showToast("Dictée fin.", 1800);
+
+    showToast("Dictée…", 1800);
+    rec.start();
+  }
+
+  // ---------- Wiring ----------
+  // Focus actions
+  btnRoulette.addEventListener("click", ()=> {
+    const t = chooseWeightedTask();
+    if(!t){ showToast("Vide."); setFocus(null); return; }
+    setFocus(t.id);
+    confetti(1.0); flash();
+    showToast("Choisi.", 1800);
+  });
+
+  btnDego.addEventListener("click", degoOneTorion);
+  btnDone.addEventListener("click", ()=>{
+    const t = getTask(state.focus.taskId);
+    if(t) finishTask(t.id);
+  });
+  btnSkip.addEventListener("click", skipTask);
+  btnNotes.addEventListener("click", openNotes);
+
+  btnTimer.addEventListener("click", ()=>{
+    const t = getTask(state.focus.taskId);
+    if(!t) return;
+    if(state.focus.running) pauseFocusTimer();
+    else startFocusTimer();
+  });
+
+  // Desktop inbox
+  btnAdd.addEventListener("click", addInbox);
+  btnDictate.addEventListener("click", ()=> startDictationToTextarea(taInbox));
+  window.addEventListener("keydown", (e)=>{
+    const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
+    const inField = (tag==="textarea" || tag==="input" || tag==="select");
+
+    // Add: Ctrl/⌘+Enter
+    if(inField && tag==="textarea" && (e.ctrlKey||e.metaKey) && e.key==="Enter"){
+      e.preventDefault();
+      if(e.target===taInbox) addInbox();
+      return;
+    }
+
+    // Undo/Redo
+    if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==="z" && !e.shiftKey){
+      e.preventDefault(); undo(); return;
+    }
+    if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==="z" && e.shiftKey){
+      e.preventDefault(); redo(); return;
+    }
+
+    if(inField) return;
+
+    // global shortcuts
+    if(e.key.toLowerCase()==="r"){ e.preventDefault(); btnRoulette.click(); return; }
+    if(e.key.toLowerCase()==="d"){ e.preventDefault(); btnDego.click(); return; }
+    if(e.key==="Escape"){ e.preventDefault(); closeDrawer(); return; }
+  });
+
+  // Rail
+  navInbox.addEventListener("click", openInboxDrawer);
+  navList.addEventListener("click", openListDrawer);
+  navSets.addEventListener("click", openSetsDrawer);
+  navStats.addEventListener("click", openStatsDrawer);
+  navSettings.addEventListener("click", openSettingsDrawer);
+  navUndo.addEventListener("click", undo);
+  navRedo.addEventListener("click", redo);
+
+  // Mobile bar
+  mInbox.addEventListener("click", openInboxDrawer);
+  mList.addEventListener("click", openListDrawer);
+  mRoulette.addEventListener("click", ()=> btnRoulette.click());
+  mDego.addEventListener("click", ()=> btnDego.click());
+
+  // ---------- Init ----------
+  // If no focus task, pick one
+  if(state.focus.taskId && !getTask(state.focus.taskId)){
+    state.focus.taskId = null;
+  }
+  if(!state.focus.taskId){
+    const t = chooseWeightedTask();
+    if(t) state.focus.taskId = t.id;
+  }
+  save();
+  renderAll();
+  showToast("Prêt.", 1600);
+
+  function fmtHMS(sec){
+    const s = Math.max(0, Math.floor(sec||0));
+    const h = Math.floor(s/3600);
+    const m = Math.floor((s%3600)/60);
+    const r = s%60;
+    if(h>0) return `${h}h${String(m).padStart(2,"0")}`;
+    return `${m}m${String(r).padStart(2,"0")}`;
+  }
+
+})();
+</script>
+</body>
+</html>
